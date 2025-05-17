@@ -1,15 +1,19 @@
 version: '3.8'
 
 networks:
-  kafka_net:
+  kafka_broker_net:
     driver: overlay
     ipam:
       config:
-        - subnet: 10.10.10.0/24
+      - subnet: 10.10.10.0/24
     attachable: true
 
 volumes:
-  kafka_data:
+  kafka_data1:
+    driver: local
+  kafka_data3:
+    driver: local
+  kafka_data2:
     driver: local
   zookeeper_data:
     driver: local
@@ -20,34 +24,98 @@ services:
     image: bitnami/zookeeper:latest
     container_name: kafka_zookeeper
     environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes
+    - ALLOW_ANONYMOUS_LOGIN=yes
     networks:
-      kafka_net:
+      kafka_broker_net:
         ipv4_address: 10.10.10.10
     volumes:
-      - zookeeper_data:/bitnami/zookeeper
+    - zookeeper_data:/bitnami/zookeeper
     deploy:
       placement:
-        constraints: [node.role == manager]
+        constraints: [ node.role == manager ]
 
-  kafka:
-    image: bitnami/kafka:latest
+  kafka1:
+    image: bitnami/kafka:3.6.1
     container_name: kafka_broker
     environment:
-      - KAFKA_BROKER_ID=1
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=10.10.10.10:2181
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka_broker:9092
-      - KAFKA_CFG_NUM_PARTITIONS=50
-      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
-      - ALLOW_PLAINTEXT_LISTENER=yes
+    - KAFKA_CFG_BROKER_ID=1
+    - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+    - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+    - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka1:9092
+    - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
+    - KAFKA_CFG_NUM_PARTITIONS=50
+    - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    - ALLOW_PLAINTEXT_LISTENER=yes
+    - KAFKA_KRAFT_MODE_ENABLED=false
     networks:
-      kafka_net:
+      kafka_broker_net:
         ipv4_address: 10.10.10.20
-    volumes:
-      - kafka_data:/bitnami/kafka
+    # volumes:
+    # - kafka_data1:/bitnami/kafka
     depends_on:
-      - zookeeper
+    - zookeeper
     deploy:
       placement:
-        constraints: [node.role == manager]
+        constraints: [ node.role == manager ]
+
+  kafka2:
+    image: bitnami/kafka:3.6.1
+    container_name: kafka_broker2
+    environment:
+    - KAFKA_CFG_BROKER_ID=2
+    - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+    - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+    - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka2:9092
+    - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
+    - KAFKA_CFG_NUM_PARTITIONS=50
+    - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    - ALLOW_PLAINTEXT_LISTENER=yes
+    - KAFKA_KRAFT_MODE_ENABLED=false
+    networks:
+      kafka_broker_net:
+        ipv4_address: 10.10.10.21
+    # volumes:
+    # - kafka_data2:/bitnami/kafka
+    deploy:
+      placement:
+        constraints: [ node.role == manager ]
+
+  kafka3:
+    image: bitnami/kafka:3.6.1
+    container_name: kafka_broker3
+    environment:
+    - KAFKA_CFG_BROKER_ID=3
+    - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+    - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+    - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka3:9092
+    - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
+    - KAFKA_CFG_NUM_PARTITIONS=50
+    - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    - ALLOW_PLAINTEXT_LISTENER=yes
+    - KAFKA_KRAFT_MODE_ENABLED=false
+    networks:
+      kafka_broker_net:
+        ipv4_address: 10.10.10.22
+    # volumes:
+    # - kafka_data3:/bitnami/kafka
+    deploy:
+      placement:
+        constraints: [ node.role == manager ]
+
+  kafka_ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka_ui
+    environment:
+    - KAFKA_CLUSTERS_0_NAME=local-cluster
+    - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-broker_kafka1:9092,kafka-broker_kafka2:9092,kafka-broker_kafka3:9092
+    - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+    ports:
+    - "8080:8080"
+    networks:
+      kafka_broker_net:
+        ipv4_address: 10.10.10.30
+    depends_on:
+    - kafka
+    deploy:
+      placement:
+        constraints: [ node.role == manager ]
